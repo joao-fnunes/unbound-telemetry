@@ -1,0 +1,21 @@
+# Build stage
+
+FROM rust:latest AS build
+
+WORKDIR /root
+ADD . .
+
+RUN cargo build --release && \
+    strip ./target/release/unbound-telemetry
+
+# Execution stage
+
+FROM debian:buster
+
+RUN apt-get update && apt-get install -y curl libssl1.1
+
+COPY --from=build /root/target/release/unbound-telemetry /bin
+
+HEALTHCHECK --timeout=1s CMD /usr/bin/curl --silent --fail http://127.0.0.1:9167/healthcheck || exit 1
+
+ENTRYPOINT ["/bin/unbound-telemetry"]
